@@ -1,8 +1,10 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	gonanoid "github.com/matoous/go-nanoid"
@@ -129,4 +131,65 @@ func (c *Contacts) Delete(id string) error {
 		}
 	}
 	return fmt.Errorf("contact id %s not found", id)
+}
+
+func (c *Contacts) SaveToFile(filename string) error {
+	data, err := json.MarshalIndent(c, "", " ")
+	if err != nil {
+		return fmt.Errorf("Failed to marshal contacts: %w", err)
+	}
+
+	err = os.WriteFile(filename, data, 0644)
+	if err != nil {
+		return fmt.Errorf("Failed to write file %s: %w", filename, err)
+	}
+
+	fmt.Printf("%d successfully saved to %s\n", len(*c), filename)
+	return nil
+}
+
+func (c *Contacts) LoadContacts(filename string) error {
+	data, err := os.ReadFile(filename)
+	if err != nil {
+		if os.IsNotExist(err) {
+			*c = Contacts{}
+			fmt.Printf("No existing contacts file found. Starting with empty contacts.\n")
+			return nil
+		}
+		return fmt.Errorf("failed to read file %s: %w", filename, err)
+	}
+
+	//check if file is empty
+	if len(data) == 0 {
+		*c = Contacts{}
+		fmt.Printf("Contacts file is empty. Starting with empty contacts.\n")
+		return nil
+	}
+
+	if err := json.Unmarshal(data, c); err != nil {
+		return fmt.Errorf("Failed to unmarshal contacts data: %w", err)
+	}
+
+	fmt.Printf("Successfully loaded %d contacts from %s\n", len(*c), filename)
+	return nil
+}
+
+func (c *Contacts) Search(keyword string) Contacts {
+	if keyword == "" {
+		return *c
+	}
+
+	keyword = strings.ToLower(keyword)
+	var results Contacts
+
+	for _, c := range *c {
+		if strings.Contains(strings.ToLower(c.FirstName), keyword) ||
+			strings.Contains(strings.ToLower(c.LastName), keyword) ||
+			strings.Contains(strings.ToLower(c.Email), keyword) ||
+			strings.Contains(strings.ToLower(c.Phone), keyword) ||
+			strings.Contains(strings.ToLower(c.ContactType), keyword) {
+			results = append(results, c)
+		}
+	}
+	return results
 }
