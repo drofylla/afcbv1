@@ -5,6 +5,8 @@ import (
 	"html/template"
 	"net/http"
 	"regexp"
+
+	"github.com/gorilla/mux"
 )
 
 var contacts Contacts
@@ -175,6 +177,88 @@ func addContact(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("Succesfully saved contact to file: %s\n", dataFile)
 
 	renderCard(w, newContact)
+}
+
+func updateContact(w http.ResponseWriter, r *http.Request) {
+	//make sure it's PUT or PATCH request
+	if r.Method != http.MethodPut && r.Method != http.MethodPatch {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	vars := mux.Vars(r)
+	id := vars["id"]
+	fmt.Printf("UPDATE request received for id: %s, form values: %+v\n", id, r.Form)
+
+	// Validate required fields
+	contactType := r.FormValue("ContactType")
+	firstName := r.FormValue("FirstName")
+	lastName := r.FormValue("LastName")
+	email := r.FormValue("Email")
+	phone := r.FormValue("Phone")
+
+	if contactType == "" || firstName == "" || lastName == "" || email == "" || phone == "" {
+		http.Error(w, "All fields are required", http.StatusBadRequest)
+		return
+	}
+
+	// Email validation
+	if !emailRegex.MatchString(email) {
+		http.Error(w, "Invalid email address format", http.StatusBadRequest)
+		return
+	}
+
+	updates := map[string]string{
+		"ContactType": r.FormValue("ContactType"),
+		"FirstName":   r.FormValue("FirstName"),
+		"LastName":    r.FormValue("LastName"),
+		"Email":       r.FormValue("Email"),
+		"Phone":       r.FormValue("Phone"),
+	}
+
+	fmt.Printf("Attempting to update contact %s with: %+v\n", id, updates)
+
+	// find contact to ensure it exists
+	var found bool
+	for i := range contacts {
+		if contacts[i].ID == id {
+			found = true
+			break
+		}
+	}
+	if !found {
+		http.Error(w, "Contact not found", http.StatusNotFound)
+		return
+	}
+
+	//update contact
+	if err := contacts.Update(id, updates); err != nil {
+		fmt.Println("Update error:", err)
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	//save to file
+	if err := contacts.SaveToFile(dataFile); err != nil {
+		http.Error(w, "Fail to save contact to file: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	//return updated contact
+	for _, c := range contacts {
+		if c.ID == id {
+			fmt.Printf("Successfully update contact: %+v\n", c)
+			renderCard(w, c)
+			return
+		}
+	}
+
+	http.Error(w, "contact not found after update", http.StatusNotFound)
 }
 
 func main() {
