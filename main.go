@@ -100,6 +100,83 @@ func getContacts(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("=== END GET /contacts ===\n")
 }
 
+func addContact(w http.ResponseWriter, r *http.Request) {
+	// make sure it's a POST request
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	id := r.FormValue("id")
+	contactType := r.FormValue("ContactType")
+	firstName := r.FormValue("FirstName")
+	lastName := r.FormValue("LastName")
+	email := r.FormValue("Email")
+	phone := r.FormValue("Phone")
+
+	fmt.Printf("Received form date - ID: '%s', Type: '%s', Name: '%s %s', Email: '%s', Phone: '%s'\n",
+		id, contactType, firstName, lastName, email, phone)
+
+	if id != "" {
+		//update existing contact
+		updates := map[string]string{
+			"ContactType": contactType,
+			"FirstName":   firstName,
+			"LastName":    lastName,
+			"Email":       email,
+			"Phone":       phone,
+		}
+
+		if err := contacts.Update(id, updates); err != nil {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+
+		//find and return updated contact
+		for _, c := range contacts {
+			if c.ID == id {
+				if err := contacts.SaveToFile(dataFile); err != nil {
+					http.Error(w, "Fail to save contacts: "+err.Error(), http.StatusInternalServerError)
+					return
+				}
+				fmt.Printf("Contact updated and save to file: %s\n", dataFile)
+				renderCard(w, c)
+				return
+			}
+		}
+		http.Error(w, "Contact not found after update", http.StatusNotFound)
+		return
+	}
+
+	//email validation
+	if !emailRegex.MatchString(email) {
+		http.Error(w, "Invalid email address input", http.StatusBadRequest)
+		return
+	}
+
+	//use New method
+	newContact, err := contacts.New(contactType, firstName, lastName, email, phone)
+	if err != nil {
+		http.Error(w, "Fail to create contact: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	fmt.Printf("New contact created with ID: %s. Total contact: %d\n", newContact.ID, len(contacts))
+
+	//save to file
+	if err := contacts.SaveToFile(dataFile); err != nil {
+		http.Error(w, "unable to save contacts: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	fmt.Printf("Succesfully saved contact to file: %s\n", dataFile)
+
+	renderCard(w, newContact)
+}
+
 func main() {
 	fmt.Println("AFcb started at http://localhost:1330")
 }
