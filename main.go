@@ -280,6 +280,40 @@ func deleteContact(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+func searchContacts(w http.ResponseWriter, r *http.Request) {
+	keyword := r.URL.Query().Get("q")
+	fmt.Printf("Search request received for keyword: '%s'\n", keyword) //log
+
+	w.Header().Set("Content-type", "text/html")
+
+	if keyword == "" {
+		fmt.Println("No keyword provided, returning all contacts") //log
+
+		for _, c := range contacts {
+			if err := conCard.Execute(w, c); err != nil {
+				http.Error(w, "Error rendering template: "+err.Error(), http.StatusInternalServerError)
+				return
+			}
+		}
+		return
+	}
+
+	results := contacts.Search(keyword)
+	fmt.Printf("Found %d results for keyword '%s'\n", len(results), keyword) //log
+
+	if len(results) == 0 {
+		fmt.Fprintf(w, `<div class="no-results">No contacts found for "%s"</div>`, template.HTMLEscapeString(keyword))
+		return
+	}
+
+	for _, c := range results {
+		if err := conCard.Execute(w, c); err != nil {
+			http.Error(w, "Error rendering template: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+}
+
 func main() {
 	fmt.Println("AFcb started at http://localhost:1330")
 }
