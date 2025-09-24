@@ -261,6 +261,25 @@ func updateContact(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "contact not found after update", http.StatusNotFound)
 }
 
+func deleteContact(w http.ResponseWriter, r *http.Request) {
+	id := mux.Vars(r)["id"]
+	fmt.Println("DELETE request received for id:", id)
+
+	if err := contacts.Delete(id); err != nil {
+		fmt.Println("Delete error:", err)
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	if err := contacts.SaveToFile(dataFile); err != nil {
+		http.Error(w, "failed to save contacts: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// return empty content - HTMX remove element
+	w.WriteHeader(http.StatusOK)
+}
+
 func main() {
 	fmt.Println("AFcb started at http://localhost:1330")
 }
