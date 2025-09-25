@@ -193,3 +193,12 @@ func (c *Contacts) Search(keyword string) Contacts {
 	}
 	return results
 }
+
+func (c *Contacts) Find(id string) (Contact, error) {
+	for _, contact := range *c {
+		if contact.ID == id {
+			return contact, nil
+		}
+	}
+	return Contact{}, fmt.Errorf("No contact found with id %s", id)
+}
