@@ -46,6 +46,7 @@ var addModalHTML = `
               hx-target="#contact-list"
               hx-swap="afterbegin"
               hx-on::after-request="if(event.detail.successful) htmx.remove(htmx.find('#contact-modal'))">
+            <input type="hidden" id="contact-id" name="id">
             <div class="mb-4">
                 <label class="block text-gray-700 text-sm font-bold mb-2" for="contactType">Contact Type</label>
                 <select id="contactType" name="ContactType" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
@@ -78,6 +79,7 @@ var addModalHTML = `
     </div>
 </div>
 `
+
 var editModalHTML = `
 <div id="contact-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
     <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
@@ -372,6 +374,7 @@ func searchContacts(w http.ResponseWriter, r *http.Request) {
 // ALL MODAL RELATED //
 // add modal render the add contact form modal
 func addModal(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html")
 	tmpl := template.Must(template.New("modal").Parse(addModalHTML))
 	tmpl.Execute(w, nil)
 }
@@ -385,6 +388,11 @@ func editModal(w http.ResponseWriter, r *http.Request) {
 	}
 	tmpl := template.Must(template.New("edit-modal").Parse(editModalHTML))
 	tmpl.Execute(w, contact)
+}
+
+func closeForm(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html")
+	w.WriteHeader(http.StatusOK)
 }
 
 func main() {
@@ -408,6 +416,8 @@ func main() {
 	//add contact API endpoints
 	router.HandleFunc("/contacts", getContacts).Methods("GET")
 	router.HandleFunc("/contacts", addContact).Methods("POST")
+	router.HandleFunc("/modal/add", addModal).Methods("GET")
+	router.HandleFunc("modal/close", closeForm).Methods("GET")
 	router.HandleFunc("/contacts/{id}", updateContact).Methods("PUT", "PATCH")
 	router.HandleFunc("/contacts/{id}", deleteContact).Methods("DELETE")
 	router.HandleFunc("/search", searchContacts).Methods("GET")
