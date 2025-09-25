@@ -315,5 +315,31 @@ func searchContacts(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	//initialize contacts
+	contacts = Contacts{}
+
+	//load contacts from file
+	if err := contacts.LoadContacts(dataFile); err != nil {
+		fmt.Printf("Error loading contacts: %v\n", err)
+		fmt.Println("Starting with empty contacts list")
+		contacts = Contacts{}
+	}
+
+	router := mux.NewRouter()
+
+	//serve main html file
+	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "static/index.html")
+	})
+
+	//add contact API endpoints
+	router.HandleFunc("/contacts", getContacts).Methods("GET")
+	router.HandleFunc("/contacts", addContact).Methods("POST")
+	router.HandleFunc("/contacts/{id}", updateContact).Methods("PUT", "PATCH")
+	router.HandleFunc("/contacts/{id}", deleteContact).Methods("DELETE")
+	router.HandleFunc("/search", searchContacts).Methods("GET")
+
+	//server start
 	fmt.Println("AFcb started at http://localhost:1330")
+	http.ListenAndServe(":1330", router)
 }
