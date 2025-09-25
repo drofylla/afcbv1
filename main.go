@@ -48,16 +48,16 @@ var conCard = template.Must(template.New("card").Parse(`
         </div>
     </div>
     <div class="actions flex justify-end mt-4 space-x-2">
-    		<button class="edit-btn p-2 rounded-lg border border-gray-300 hover:border-blue-500 hover:bg-blue-50 transition-colors"
-                hx-get="/modal/edit/{{.ID}}"
-                hx-target="#modal-container"
-                hx-swap="innerHTML"
-                title="Edit">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M12 20h9"/>
-                    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>
-                </svg>
-            </button>
+        <button class="edit-btn p-2 rounded-lg border border-gray-300 hover:border-blue-500 hover:bg-blue-50 transition-colors"
+            hx-get="/modal/edit/{{.ID}}"
+            hx-target="#modal-container"
+            hx-swap="innerHTML"
+            title="Edit">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 20h9"/>
+                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>
+            </svg>
+        </button>
         <button class="delete-btn p-2 rounded-lg border border-gray-300 hover:border-red-500 hover:bg-red-50 transition-colors"
                 hx-delete="/contacts/{{.ID}}"
                 hx-target="#contact-{{.ID}}"
@@ -456,6 +456,9 @@ func main() {
 	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "static/index.html")
 	})
+
+	//static file server
+	router.PathPrefix("/static/").Handler(http.StripPrefix("/static", http.FileServer(http.Dir("./static"))))
 
 	//add contact API endpoints
 	router.HandleFunc("/contacts", getContacts).Methods("GET")
