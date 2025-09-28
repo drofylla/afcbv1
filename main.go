@@ -532,7 +532,7 @@ func main() {
 	authRouter.HandleFunc("/contacts", addContact).Methods("POST")
 	authRouter.HandleFunc("/modal/add", addModal).Methods("GET")
 	authRouter.HandleFunc("/modal/edit/{id}", editModal).Methods("GET")
-	authRouter.HandleFunc("modal/close", closeForm).Methods("GET")
+	authRouter.HandleFunc("/modal/close", closeForm).Methods("GET")
 	authRouter.HandleFunc("/contacts/{id}", updateContact).Methods("PUT", "PATCH")
 	authRouter.HandleFunc("/contacts/{id}", deleteContact).Methods("DELETE")
 	authRouter.HandleFunc("/search", searchContacts).Methods("GET")
