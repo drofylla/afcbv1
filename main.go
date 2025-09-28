@@ -9,6 +9,52 @@ import (
 	"github.com/gorilla/mux"
 )
 
+func loginHandler(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+	username := r.FormValue("username")
+	password := r.FormValue("password")
+
+	if username == ValidUser.Username && password == ValidUser.Password {
+		http.SetCookie(w, &http.Cookie{
+			Name:  "session",
+			Value: "authenticated",
+			Path:  "/",
+		})
+		w.Header().Set("HX-Redirect", "/")
+
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("Login successful"))
+		return
+	}
+
+	w.WriteHeader(http.StatusUnauthorized)
+	w.Write([]byte(`<div id="login-message" class="mt-4 text-center text-red-500">Invalid username or password.</div>`))
+}
+
+func logoutHandler(w http.ResponseWriter, r *http.Request) {
+	http.SetCookie(w, &http.Cookie{
+		Name:   "session",
+		Value:  "",
+		Path:   "/",
+		MaxAge: -1,
+	})
+	http.Redirect(w, r, "/login", http.StatusSeeOther)
+}
+
+func authMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		cookie, err := r.Cookie("session")
+		if err != nil || cookie.Value != "authenticated" {
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 var contacts Contacts
 
 var emailRegex = regexp.MustCompile(`^[^@\s]+@[^@\s]+\.[^@\s]+$`)
@@ -462,23 +508,34 @@ func main() {
 
 	router := mux.NewRouter()
 
-	//serve main html file
-	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, "static/index.html")
+	//serve login page
+	router.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "GET" {
+			http.ServeFile(w, r, "static/login.html")
+		} else if r.Method == "POST" {
+			loginHandler(w, r)
+		}
 	})
 
+	//create sub-router for all authenticated routes
+	authRouter := router.PathPrefix("/").Subrouter()
+	authRouter.Use(authMiddleware)
+
+	authRouter.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "static/index.html")
+	})
 	//static file server
-	router.PathPrefix("/static/").Handler(http.StripPrefix("/static", http.FileServer(http.Dir("./static"))))
+	authRouter.PathPrefix("/static/").Handler(http.StripPrefix("/static", http.FileServer(http.Dir("./static"))))
 
 	//add contact API endpoints
-	router.HandleFunc("/contacts", getContacts).Methods("GET")
-	router.HandleFunc("/contacts", addContact).Methods("POST")
-	router.HandleFunc("/modal/add", addModal).Methods("GET")
-	router.HandleFunc("/modal/edit/{id}", editModal).Methods("GET")
-	router.HandleFunc("modal/close", closeForm).Methods("GET")
-	router.HandleFunc("/contacts/{id}", updateContact).Methods("PUT", "PATCH")
-	router.HandleFunc("/contacts/{id}", deleteContact).Methods("DELETE")
-	router.HandleFunc("/search", searchContacts).Methods("GET")
+	authRouter.HandleFunc("/contacts", getContacts).Methods("GET")
+	authRouter.HandleFunc("/contacts", addContact).Methods("POST")
+	authRouter.HandleFunc("/modal/add", addModal).Methods("GET")
+	authRouter.HandleFunc("/modal/edit/{id}", editModal).Methods("GET")
+	authRouter.HandleFunc("modal/close", closeForm).Methods("GET")
+	authRouter.HandleFunc("/contacts/{id}", updateContact).Methods("PUT", "PATCH")
+	authRouter.HandleFunc("/contacts/{id}", deleteContact).Methods("DELETE")
+	authRouter.HandleFunc("/search", searchContacts).Methods("GET")
 
 	//server start
 	fmt.Println("AFcb started at http://localhost:1330")
