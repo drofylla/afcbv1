@@ -30,8 +30,8 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusUnauthorized)
 	w.Write([]byte(`<div id="login-message" class="mt-4 text-center text-red-500">Invalid username or password.</div>`))
+	w.WriteHeader(http.StatusUnauthorized)
 }
 
 func logoutHandler(w http.ResponseWriter, r *http.Request) {
